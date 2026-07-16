@@ -1,0 +1,352 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "id": "953826d1-9116-4185-b794-f716b6fc3656",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import yfinance as yf\n",
+    "import numpy as np\n",
+    "import pandas as pd\n",
+    "def charger_prix(ticker, periode):\n",
+    "    D= yf.download(ticker, period=periode)\n",
+    "    prix=D['Close'].squeeze()\n",
+    "    return prix\n",
+    "    \n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 19,
+   "id": "414e8a49-7d4d-4367-a78d-1297170f9378",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "[*********************100%***********************]  1 of 1 completed\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "Date\n",
+       "2024-07-15    232.386978\n",
+       "2024-07-16    232.803345\n",
+       "2024-07-17    226.914383\n",
+       "2024-07-18    222.254730\n",
+       "2024-07-19    222.383621\n",
+       "                 ...    \n",
+       "2026-07-09    316.220001\n",
+       "2026-07-10    315.320007\n",
+       "2026-07-13    317.309998\n",
+       "2026-07-14    314.859985\n",
+       "2026-07-15    327.410004\n",
+       "Name: AAPL, Length: 502, dtype: float64"
+      ]
+     },
+     "execution_count": 19,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "charger_prix('AAPL','2y')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "id": "3aa741b7-4e7a-46e3-b937-cc325d502064",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def signal_SMA(prix, num):\n",
+    "    SMA_num=prix.rolling(num).mean()\n",
+    "    signal_brut=np.where(prix>SMA_num,1,np.where(prix<SMA_num,-1,0))\n",
+    "    signal_brut = pd.Series(signal_brut, index=SMA_num.index)\n",
+    "    signal_sma=signal_brut.shift(1)\n",
+    "    return signal_sma"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 29,
+   "id": "b675cda8-9540-4f72-a3a5-2c8773c96a4e",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "[*********************100%***********************]  1 of 1 completed"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      " 1.0    283\n",
+      "-1.0    198\n",
+      " 0.0     19\n",
+      "Name: count, dtype: int64\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "prix = charger_prix('AAPL','2y')\n",
+    "signal_sma = SMA(prix, 20)\n",
+    "print(signal_sma.value_counts())"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 28,
+   "id": "d332fe42-df16-421f-9d0f-2ef0a2d248af",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def signal_RSI(prix,fenetre=14, seuil_bas=30, seuil_haut=70):\n",
+    "    delta=prix.diff() \n",
+    "    gains=delta.clip(lower=0) \n",
+    "    perte=delta.clip(upper=0).abs() \n",
+    "    gain_moyen=gains.rolling(fenetre).mean()\n",
+    "    perte_moyenne=perte.rolling(fenetre).mean()\n",
+    "    RS=gain_moyen/perte_moyenne\n",
+    "    RSI=100-(100/(1+RS))\n",
+    "    signal_rsi_brut=np.where(RSI<seuil_bas,1,np.where(RSI>seuil_haut,-1,0)) \n",
+    "    signal_rsi_brut = pd.Series(signal_rsi_brut, index=RSI.index)\n",
+    "    signal_rsi=signal_rsi_brut.shift(1)\n",
+    "    return signal_rsi"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 30,
+   "id": "fa134ff2-547a-4cd1-b1d2-6c340eeabf9b",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "[*********************100%***********************]  1 of 1 completed"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      " 0.0    396\n",
+      "-1.0     69\n",
+      " 1.0     35\n",
+      "Name: count, dtype: int64\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "prix = charger_prix('AAPL','2y')\n",
+    "signal_rsi= signal_RSI(prix)\n",
+    "print(signal_rsi.value_counts())"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 36,
+   "id": "cebab4ac-32f8-4b0b-9cbe-a96ef3a9ff23",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def signal_MACD(prix, moyenne_courte=12, moyenne_longue=26, ligne_signal=9):\n",
+    "    EMA12=prix.ewm(span=moyenne_courte).mean()\n",
+    "    EMA26=prix.ewm(span=moyenne_longue).mean()\n",
+    "    MACD=EMA12-EMA26\n",
+    "    ligne=MACD.ewm(span=ligne_signal).mean()\n",
+    "    signal_MACD_brut=np.where(MACD>ligne,1,np.where(MACD<ligne,-1,0)) #+1 achat, -1 vente, 0 neutre \n",
+    "    signal_MACD_brut = pd.Series(signal_MACD_brut, index=MACD.index)\n",
+    "    signal_macd=signal_MACD_brut.shift(1)\n",
+    "    return signal_macd"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 37,
+   "id": "5016aaa7-4c85-4e9e-9f4e-2d47d76c15b5",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "[*********************100%***********************]  1 of 1 completed"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "-1.0    485\n",
+      " 1.0     15\n",
+      "Name: count, dtype: int64\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "prix = charger_prix('AAPL','2y')\n",
+    "signal_macd= signal_MACD(prix)\n",
+    "print(signal_macd.value_counts())"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 40,
+   "id": "384b7d57-dd60-4ab5-b4d1-3e825becda3b",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def signal_BOLLINGER(prix, fenetre=20, k=2):\n",
+    "    SMA20 = prix.rolling(fenetre).mean()\n",
+    "    ecart_type = prix.rolling(fenetre).std()\n",
+    "    bande_haut = SMA20 + k * ecart_type\n",
+    "    bande_bas = SMA20 - k * ecart_type\n",
+    "    signal_brut = np.where(prix < bande_bas, 1, np.where(prix > bande_haut, -1, 0))\n",
+    "    signal_brut = pd.Series(signal_brut, index=prix.index)\n",
+    "    signal_brut = signal_brut.shift(1)\n",
+    "    return signal_brut"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 41,
+   "id": "17197e1a-b6d0-4bc7-baec-e0a529f2019a",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "[*********************100%***********************]  1 of 1 completed"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      " 0.0    442\n",
+      "-1.0     35\n",
+      " 1.0     23\n",
+      "Name: count, dtype: int64\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "prix = charger_prix('AAPL','2y')\n",
+    "signal_brut= signal_BOLLINGER(prix)\n",
+    "print(signal_brut.value_counts())"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 42,
+   "id": "f1da3ff1-40b3-411b-9908-5f78c7b1e773",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "[*********************100%***********************]  1 of 1 completed"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      " 1.0    283\n",
+      "-1.0    198\n",
+      " 0.0     19\n",
+      "Name: count, dtype: int64\n",
+      " 1.0    261\n",
+      "-1.0    238\n",
+      " 0.0      1\n",
+      "Name: count, dtype: int64\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "from indicateurs import charger_prix, signal_SMA, signal_RSI, signal_MACD, signal_BOLLINGER\n",
+    "\n",
+    "prix = charger_prix('AAPL')\n",
+    "print(signal_SMA(prix).value_counts())\n",
+    "print(signal_MACD(prix).value_counts())"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "59fd792d-8b46-4c8e-ba9f-14a6c31b8176",
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3 (ipykernel)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.11.7"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
